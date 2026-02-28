@@ -3,6 +3,7 @@ package com.example.fileupload.controller;
 import com.example.fileupload.dto.ApiResponse;
 import com.example.fileupload.dto.FileUploadResponse;
 import com.example.fileupload.service.FileUploadService;
+import com.example.fileupload.service.impl.FileUploadServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -23,8 +24,11 @@ import java.util.List;
 @RequestMapping("/files")
 public class FileUploadController {
 
-    @javax.annotation.Resource
+    @jakarta.annotation.Resource
     private FileUploadService fileUploadServicee;
+
+    @jakarta.annotation.Resource
+    private FileUploadServiceImpl fileUploadServiceImpl;
 
     /**
      * 单文件上传
@@ -34,7 +38,8 @@ public class FileUploadController {
             @RequestParam("file") MultipartFile file) {
 
         log.info("接收到文件上传请求: {}", file.getOriginalFilename());
-        FileUploadResponse response = fileUploadServicee.uploadFile(file);
+        //FileUploadResponse response = fileUploadServicee.uploadFile(file);
+        FileUploadResponse response = fileUploadServiceImpl.minioUpload(file);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

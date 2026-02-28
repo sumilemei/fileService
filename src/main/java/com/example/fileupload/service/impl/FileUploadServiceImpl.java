@@ -1,23 +1,33 @@
 package com.example.fileupload.service.impl;
 
+import com.example.fileupload.config.MinioStorageProperties;
 import com.example.fileupload.dto.FileUploadResponse;
 import com.example.fileupload.exception.FileUploadException;
 import com.example.fileupload.service.FileUploadService;
 import com.example.fileupload.util.FileUtil;
+import io.minio.BucketExistsArgs;
+import io.minio.MakeBucketArgs;
+import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
+import io.minio.errors.*;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-
-import javax.annotation.PostConstruct;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 文件上传服务实现
@@ -31,6 +41,12 @@ public class FileUploadServiceImpl implements FileUploadService {
 
     @Value("${file.upload.max-file-size}")
     private Long maxFileSize;
+
+    @Resource
+    private MinioClient minioClient;
+
+    @Resource
+    private MinioStorageProperties minioStorageProperties;
 
     @PostConstruct
     public void init() {
@@ -178,6 +194,75 @@ public class FileUploadServiceImpl implements FileUploadService {
         // 校验文件大小
         if (!FileUtil.isValidFileSize(file.getSize(), maxFileSize)) {
             throw new FileUploadException(400, "文件大小超过限制，最大允许: " + FileUtil.formatFileSize(maxFileSize));
+        }
+    }
+
+    /**
+     * minio上传文件
+     */
+    public FileUploadResponse minioUpload(MultipartFile file){
+        log.info("选用minio上传");
+
+        String bucketName = minioStorageProperties.getBucketName();
+        String fileName = this.generateObjectName(file.getOriginalFilename());
+        long size = file.getSize();
+        String contentType = file.getContentType();
+        if (contentType == null || contentType.isEmpty()) {
+            contentType = "application/octet-stream";
+        }
+
+        try {
+            ensureBucketExists(bucketName);
+            InputStream inputStream = file.getInputStream();
+            minioClient.putObject(PutObjectArgs.builder()
+                    .bucket(bucketName)
+                    .object(fileName)
+                    .stream(inputStream,size,-1)
+                    .contentType(contentType)
+                    .build());
+            log.info("文件上传成功: {} -> {}", file.getOriginalFilename(), fileName);
+            // 构建响应
+            return FileUploadResponse.builder()
+                    .fileName(fileName)
+                    .originalFileName(file.getOriginalFilename())
+                    .fileSize(size)
+                    .contentType(contentType)
+                    .uploadTime(LocalDateTime.now())
+                    .build();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+
+    }
+
+    /**
+     * 生成唯一的对象名称（避免文件名冲突）
+     * 格式：UUID_原始文件名
+     */
+    private String generateObjectName(String originalFilename) {
+        String uuid = UUID.randomUUID().toString().replace("-", "");
+        return uuid + "_" + originalFilename;
+    }
+
+    /**
+     * 确保桶存在，不存在则创建
+     */
+    private void ensureBucketExists(String bucketName) throws Exception {
+        boolean exists = minioClient.bucketExists(
+                BucketExistsArgs.builder()
+                        .bucket(bucketName)
+                        .build()
+        );
+
+        if (!exists) {
+            minioClient.makeBucket(
+                    MakeBucketArgs.builder()
+                            .bucket(bucketName)
+                            .build()
+            );
+            log.info("桶创建成功: {}", bucketName);
         }
     }
 }
