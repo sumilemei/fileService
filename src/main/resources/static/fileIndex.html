@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件上传系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+            position: relative;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #4CAF50 !important;
+            background: #e8f5e9 !important;
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 40px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .upload-btn:disabled {
+            background: #ccc !important;
+            cursor: not-allowed !important;
+            box-shadow: none !important;
+        }
+
+        .file-info {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f0f2ff;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block !important;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .storage-options {
+            margin: 25px 0;
+        }
+
+        .storage-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            border: 2px solid #e0e0e0;
+        }
+
+        .radio-option:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .radio-option input[type="radio"] {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .radio-option:has(input:checked) {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        /* 进度条样式 */
+        .progress-container {
+            margin: 25px 0;
+            display: none;
+        }
+
+        .progress-container.show {
+            display: block !important;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .progress-bar-bg {
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 12px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            width: 0%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .uploading-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* 加载动画 */
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading-spinner.show {
+            display: block !important;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 15px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* 结果消息 */
+        .result-message {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result-message.show {
+            display: block !important;
+        }
+
+        .result-message.success {
+            background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%);
+            color: #2e7d32;
+        }
+
+        .result-message.error {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            color: #c62828;
+        }
+
+        .result-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .result-icon {
+            font-size: 24px;
+        }
+
+        .result-details {
+            background: rgba(255, 255, 255, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .result-details p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .result-details a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .result-details a:hover {
+            text-decoration: underline;
+        }
+
+        /* 统计信息 */
+        .stats {
+            display: none;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stats.show {
+            display: grid !important;
+        }
+
+        .stat-item {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* 新增：已选择文件的显示 */
+        .selected-file-display {
+            display: none;
+        }
+
+        .selected-file-display.show {
+            display: block !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📁 文件上传系统</h1>
+        <p class="subtitle">支持本地存储与 MinIO 对象存储，大文件友好</p>
+
+        <form id="uploadForm">
+            <!-- 隐藏的文件输入 -->
+            <input type="file" name="file" id="fileInput" required style="display: none;">
+
+            <!-- 上传区域 - 初始状态 -->
+            <div class="upload-area" id="uploadAreaInitial">
+                <div class="upload-icon">📤</div>
+                <p style="margin-bottom: 15px; color: #666;">点击选择文件或拖拽文件到此处</p>
+                <button type="button" class="upload-btn" id="selectFileBtn">
+                    选择文件
+                </button>
+            </div>
+
+            <!-- 上传区域 - 已选择文件状态 -->
+            <div class="upload-area selected-file-display" id="uploadAreaSelected">
+                <div class="upload-icon">✅</div>
+                <p style="margin-bottom: 10px; color: #2e7d32; font-weight: 600;" id="selectedFileName"></p>
+                <p style="color: #666; font-size: 14px;" id="selectedFileSize"></p>
+                <button type="button" class="upload-btn" id="reselectFileBtn" style="margin-top: 10px;">
+                    🔄 重新选择文件
+                </button>
+            </div>
+
+            <!-- 文件信息 -->
+            <div class="file-info" id="fileInfo">
+                <div class="file-name" id="fileName"></div>
+                <div class="file-size" id="fileSize"></div>
+            </div>
+
+            <!-- 存储类型选择 -->
+            <div class="storage-options">
+                <label class="storage-label">💾 选择存储方式：</label>
+                <div class="radio-group">
+                    <label class="radio-option">
+                        <input type="radio" name="storageType" value="local" checked>
+                        <span>🏠 本地存储</span>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="storageType" value="minio">
+                        <span>☁️ MINIO对象存储</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 上传按钮 -->
+            <div style="text-align: center;">
+                <button type="submit" class="upload-btn" id="uploadBtn" disabled>
+                    🚀 开始上传
+                </button>
+            </div>
+
+            <!-- 进度条 -->
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-label">
+                    <span>上传进度</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <div class="uploading-info">
+                    <span id="uploadedSize">0 B / 0 B</span>
+                    <span id="uploadSpeed">0 KB/s</span>
+                </div>
+            </div>
+
+            <!-- 加载动画 -->
+            <div class="loading-spinner" id="loadingSpinner">
+                <div class="spinner"></div>
+                <p class="loading-text">正在上传，请稍候...</p>
+            </div>
+        </form>
+
+        <!-- 结果消息 -->
+        <div class="result-message" id="resultMessage"></div>
+
+        <!-- 统计信息 -->
+        <div class="stats" id="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="totalUploads">0</div>
+                <div class="stat-label">总上传次数</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalSize">0 MB</div>
+                <div class="stat-label">总上传量</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="successRate">0%</div>
+                <div class="stat-label">成功率</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('========================================');
+        console.log('文件上传系统 - 脚本加载');
+        console.log('========================================');
+
+        let totalUploads = 0;
+        let successfulUploads = 0;
+        let totalSizeUploaded = 0;
+
+        // DOM 元素引用
+        const fileInput = document.getElementById('fileInput');
+        const uploadAreaInitial = document.getElementById('uploadAreaInitial');
+        const uploadAreaSelected = document.getElementById('uploadAreaSelected');
+        const selectFileBtn = document.getElementById('selectFileBtn');
+        const reselectFileBtn = document.getElementById('reselectFileBtn');
+        const selectedFileName = document.getElementById('selectedFileName');
+        const selectedFileSize = document.getElementById('selectedFileSize');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressPercent = document.getElementById('progressPercent');
+        const uploadedSizeEl = document.getElementById('uploadedSize');
+        const uploadSpeedEl = document.getElementById('uploadSpeed');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const resultMessage = document.getElementById('resultMessage');
+
+        console.log('DOM元素获取完成');
+        console.log('uploadBtn.disabled:', uploadBtn.disabled);
+
+        // 选择文件按钮点击事件
+        selectFileBtn.addEventListener('click', function() {
+            console.log('选择文件按钮被点击');
+            fileInput.click();
+        });
+
+        // 重新选择文件按钮点击事件
+        reselectFileBtn.addEventListener('click', function() {
+            console.log('重新选择文件按钮被点击');
+            resetUploadArea();
+        });
+
+        // 文件选择事件
+        fileInput.addEventListener('change', function() {
+            console.log('========================================');
+            console.log('✅ 文件选择事件触发');
+            console.log('选择的文件:', this.files);
+            console.log('文件数量:', this.files.length);
+
+            if (this.files && this.files[0]) {
+                const file = this.files[0];
+                console.log('文件详情:', file);
+                console.log('文件名:', file.name);
+                console.log('文件大小:', file.size);
+
+                showSelectedFile(file);
+            }
+        });
+
+        function showSelectedFile(file) {
+            console.log('========================================');
+            console.log('✅✅✅ showSelectedFile 函数被调用');
+            console.log('文件:', file);
+
+            // 隐藏初始上传区域，显示已选择文件区域
+            uploadAreaInitial.style.display = 'none';
+            uploadAreaSelected.classList.add('show');
+
+            // 显示文件信息
+            selectedFileName.textContent = file.name;
+            selectedFileSize.textContent = formatFileSize(file.size);
+
+            fileName.textContent = '📄 ' + file.name;
+            fileSize.textContent = '大小: ' + formatFileSize(file.size);
+            fileInfo.classList.add('show');
+            console.log('✓ 文件信息已显示');
+
+            // 启用上传按钮
+            uploadBtn.disabled = false;
+            console.log('✓ 上传按钮已启用');
+            console.log('uploadBtn.disabled:', uploadBtn.disabled);
+            console.log('========================================');
+        }
+
+        function resetUploadArea() {
+            console.log('========================================');
+            console.log('🔄 重置上传区域');
+
+            // 清空fileInput
+            fileInput.value = '';
+
+            // 显示初始上传区域，隐藏已选择文件区域
+            uploadAreaInitial.style.display = 'block';
+            uploadAreaSelected.classList.remove('show');
+
+            // 清空文件信息
+            fileInfo.classList.remove('show');
+            uploadBtn.disabled = true;
+
+            // 隐藏进度和结果
+            progressContainer.classList.remove('show');
+            resultMessage.classList.remove('show');
+
+            console.log('✓ 上传区域已重置');
+            console.log('========================================');
+        }
+
+        // 拖拽事件
+        const uploadAreas = [uploadAreaInitial, uploadAreaSelected];
+
+        uploadAreas.forEach(area => {
+            area.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                area.classList.add('dragover');
+            });
+
+            area.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                area.classList.remove('dragover');
+            });
+
+            area.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                area.classList.remove('dragover');
+
+                const files = e.dataTransfer.files;
+                console.log('拖拽事件触发，文件数量:', files.length);
+
+                if (files && files[0]) {
+                    // 将拖拽的文件赋值给fileInput
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(files[0]);
+                    fileInput.files = dataTransfer.files;
+
+                    showSelectedFile(files[0]);
+                }
+            });
+        });
+
+        // 表单提交
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('表单提交事件触发');
+            uploadFile();
+        });
+
+        function uploadFile() {
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('请先选择文件！');
+                return;
+            }
+
+            console.log('开始上传文件:', file.name);
+            console.log('fileInput.files.length:', fileInput.files.length);
+
+            const storageType = document.querySelector('input[name="storageType"]:checked').value;
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('storageType', storageType);
+
+            // 显示进度条
+            progressContainer.classList.add('show');
+            loadingSpinner.classList.add('show');
+            resultMessage.classList.remove('show');
+            uploadBtn.disabled = true;
+
+            // 使用 XMLHttpRequest 以获取上传进度
+            const xhr = new XMLHttpRequest();
+
+            // 上传进度监听
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = Math.round((e.loaded / e.total) * 100);
+                    const uploaded = e.loaded;
+                    const total = e.total;
+
+                    progressBar.style.width = percentComplete + '%';
+                    progressPercent.textContent = percentComplete + '%';
+                    uploadedSizeEl.textContent = formatFileSize(uploaded) + ' / ' + formatFileSize(total);
+
+                    // 计算上传速度
+                    uploadSpeedEl.textContent = calculateSpeed(uploaded);
+                }
+            });
+
+            // 上传完成
+            xhr.addEventListener('load', function() {
+                console.log('上传请求完成，状态码:', xhr.status);
+                if (xhr.status === 201) {
+                    const result = JSON.parse(xhr.responseText);
+                    console.log('上传成功:', result);
+                    showSuccess(result);
+                    updateStats(true, file.size);
+                } else {
+                    console.error('上传失败，状态码:', xhr.status);
+                    showError('上传失败，请重试');
+                    updateStats(false, 0);
+                }
+                uploadBtn.disabled = false;
+            });
+
+            // 上传错误
+            xhr.addEventListener('error', function() {
+                console.error('网络错误');
+                showError('网络错误，请检查连接');
+                updateStats(false, 0);
+                uploadBtn.disabled = false;
+            });
+
+            // 发送请求
+            xhr.open('POST', 'http://127.0.0.1:9090/api/files/upload');
+            xhr.send(formData);
+
+            console.log('上传请求已发送');
+        }
+
+        function showSuccess(result) {
+            loadingSpinner.classList.remove('show');
+            resultMessage.className = 'result-message success show';
+            resultMessage.innerHTML = `
+                <div class="result-title">
+                    <span class="result-icon">🎉</span>
+                    <span>上传成功！</span>
+                </div>
+                <div class="result-details">
+                    <p><strong>文件名：</strong>${result.data.fileName}</p>
+                    ${result.data.originalFileName ? `<p><strong>原始文件名：</strong>${result.data.originalFileName}</p>` : ''}
+                    <p><strong>文件大小：</strong>${formatFileSize(result.data.fileSize)}</p>
+                    <p><strong>存储类型：</strong>${result.data.storageType === 'local' ? '本地存储' : 'MINIO对象存储'}</p>
+                    ${result.data.fileUrl ? `<p><strong>访问地址：</strong><a href="${result.data.fileUrl}" target="_blank">${result.data.fileUrl}</a></p>` : ''}
+                    ${result.data.uploadTime ? `<p><strong>上传时间：</strong>${new Date(result.data.uploadTime).toLocaleString('zh-CN')}</p>` : ''}
+                    <div style="margin-top: 15px; text-align: center;">
+                        <button type="button" class="upload-btn" onclick="resetUploadArea()" style="padding: 8px 30px; font-size: 14px;">
+                            🔄 继续上传
+                        </button>
+                    </div>
+                </div>
+            `;
+            console.log('✅ 上传成功消息已显示');
+        }
+
+        function showError(message) {
+            loadingSpinner.classList.remove('show');
+            resultMessage.className = 'result-message error show';
+            resultMessage.innerHTML = `
+                <div class="result-title">
+                    <span class="result-icon">❌</span>
+                    <span>${message}</span>
+                </div>
+                <div class="result-details">
+                    <p>请检查：</p>
+                    <ul style="margin-left: 20px;">
+                        <li>文件是否超过大小限制（最大2GB）</li>
+                        <li>网络连接是否正常</li>
+                        <li>后端服务是否启动（端口9090）</li>
+                        <li>打开浏览器控制台（F12）查看详细错误</li>
+                    </ul>
+                </div>
+            `;
+            console.log('❌ 错误消息已显示:', message);
+        }
+
+        function updateStats(success, size) {
+            totalUploads++;
+            if (success) {
+                successfulUploads++;
+                totalSizeUploaded += size;
+            }
+
+            document.getElementById('totalUploads').textContent = totalUploads;
+            document.getElementById('totalSize').textContent = formatFileSize(totalSizeUploaded);
+            document.getElementById('successRate').textContent =
+                Math.round((successfulUploads / totalUploads) * 100) + '%';
+
+            document.getElementById('stats').classList.add('show');
+        }
+
+        // 计算上传速度
+        let lastUploaded = 0;
+        let lastTime = Date.now();
+
+        function calculateSpeed(uploaded) {
+            const currentTime = Date.now();
+            const timeDiff = (currentTime - lastTime) / 1000; // 秒
+            const uploadedDiff = uploaded - lastUploaded;
+
+            if (timeDiff > 0.5 && uploadedDiff > 0) { // 每0.5秒更新一次
+                const speed = uploadedDiff / timeDiff;
+                lastUploaded = uploaded;
+                lastTime = currentTime;
+                return formatSpeed(speed);
+            }
+
+            return uploadSpeedEl.textContent || '0 KB/s';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function formatSpeed(bytesPerSecond) {
+            const k = 1024;
+            if (bytesPerSecond < k) {
+                return Math.round(bytesPerSecond) + ' B/s';
+            } else if (bytesPerSecond < k * k) {
+                return Math.round(bytesPerSecond / k) + ' KB/s';
+            } else {
+                return (bytesPerSecond / k / k).toFixed(2) + ' MB/s';
+            }
+        }
+
+        console.log('========================================');
+        console.log('✅ 脚本初始化完成，等待用户操作');
+        console.log('========================================');
+    </script>
+</body>
+</html>
